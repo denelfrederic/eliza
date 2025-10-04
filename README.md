@@ -23,14 +23,18 @@ Un agent IA autonome basé sur le framework ElizaOS, développé avec TypeScript
 
 ```
 eliza/
-├── test-agent/           # Agent principal
+├── test-agent/           # Agent de développement/test
+├── finance-agent/        # Agent financier spécialisé
+├── support-agent/        # Agent support client
+├── docs/                # Documentation
+└── .gitignore          # Configuration Git
+
+# Chaque agent contient :
 │   ├── src/             # Code source TypeScript
 │   ├── src/frontend/    # Interface React
 │   ├── src/__tests__/   # Tests Cypress
 │   ├── package.json     # Dépendances
 │   └── .env.example     # Variables d'environnement
-├── docs/                # Documentation
-└── .gitignore          # Configuration Git
 ```
 
 ## ⚡ Prérequis
@@ -44,24 +48,115 @@ eliza/
 1. **Cloner le projet**
    ```bash
    git clone https://github.com/denelfrederic/eliza.git
-   cd eliza/test-agent
+   cd eliza
    ```
 
-2. **Installer les dépendances**
+2. **Choisir un agent**
+   ```bash
+   # Agent de développement/test
+   cd test-agent
+   
+   # Agent financier spécialisé
+   cd finance-agent
+   
+   # Agent support client
+   cd support-agent
+   ```
+
+3. **Installer les dépendances**
    ```bash
    bun install
    ```
 
-3. **Configuration**
+4. **Configuration**
    ```bash
    cp .env.example .env
    # Éditer .env avec vos clés API
    ```
 
-4. **Lancer en développement**
+5. **Lancer en développement**
    ```bash
-   bun run dev
+   # Méthode 1 : Démarrage direct (Ctrl+C fonctionne)
+   bun run build && bunx elizaos start
+   
+   # Méthode 2 : Avec PM2 (production)
+   pm2 start ecosystem.config.js
+   
+   # Méthode 3 : Mode développement
+   bunx elizaos dev
    ```
+
+## 🔄 Gestion Multi-Agents
+
+### **Développement Multi-Agents**
+
+Ce projet supporte le développement de plusieurs agents spécialisés avec déploiement isolé :
+
+```
+eliza/
+├── test-agent/          # Agent de développement/test (Port 3000)
+├── finance-agent/       # Agent financier (Port 3001)  
+├── support-agent/       # Agent support client (Port 3002)
+└── docs/               # Documentation complète
+```
+
+### **Démarrage Isolé par Agent**
+
+#### **Script de Gestion Multi-Agents**
+```powershell
+# Démarrer un agent spécifique
+.\manage-agents.ps1 -Action start -Agent test
+
+# Démarrer tous les agents
+.\manage-agents.ps1 -Action start -Agent all
+
+# Arrêter un agent
+.\manage-agents.ps1 -Action stop -Agent finance
+
+# Voir les logs
+.\manage-agents.ps1 -Action logs -Agent support
+```
+
+#### **Commandes PM2 Multi-Agents**
+```bash
+# Démarrer tous les agents
+pm2 start ecosystem-multi.config.js
+
+# Démarrer un agent spécifique
+pm2 start ecosystem-multi.config.js --only eliza-test-agent
+
+# Voir tous les agents
+pm2 list
+
+# Logs d'un agent spécifique
+pm2 logs eliza-test-agent
+```
+
+### **Déploiement Isolé**
+
+Chaque agent peut être déployé indépendamment :
+
+- **Ports différents** : 3000, 3001, 3002...
+- **Configurations séparées** : Chaque agent a son `ecosystem.config.js`
+- **Environnements isolés** : Variables d'environnement spécifiques
+- **Déploiement Docker** : Chaque agent peut être conteneurisé séparément
+
+## 🤖 Agents spécialisés
+
+### **test-agent** - Agent de développement
+- **Rôle** : Développement, tests, et expérimentation
+- **Personnalité** : Polyvalent et adaptable
+- **Usage** : Tests de nouvelles fonctionnalités, développement
+
+### **finance-agent** - Agent financier
+- **Rôle** : Conseils financiers, analyse d'investissements, planification budgétaire
+- **Personnalité** : Professionnel, analytique, précis avec les chiffres
+- **Usage** : Assistance financière, conseils d'investissement, éducation financière
+
+### **support-agent** - Agent support client
+- **Rôle** : Assistance technique, résolution de problèmes, support client
+- **Personnalité** : Patient, empathique, orienté solutions
+- **Usage** : Support client, assistance technique, formation utilisateurs
 
 ## 🔧 Configuration
 
@@ -98,6 +193,12 @@ bun run format          # Formatage Prettier
 bun run lint            # Linting
 ```
 
+## 📚 Documentation
+
+- **[Guide de Déploiement](docs/deploiement.md)** - Déploiement en production
+- **[Guide Démarrage/Arrêt](docs/demarrage-arret.md)** - Gestion des agents
+- **[Architecture Multi-Agents](docs/architecture-multi-agents.md)** - Organisation du projet
+
 ## 🚀 Déploiement
 
 Pour déployer en production, consultez le [Guide de déploiement](docs/deploiement.md).
@@ -105,6 +206,11 @@ Pour déployer en production, consultez le [Guide de déploiement](docs/deploiem
 ## 🔧 Dépannage
 
 ### Erreurs courantes
+
+**"Ctrl+C ne fonctionne pas pour arrêter le serveur"**
+- **Cause** : Configuration PM2 avec `autorestart: true`
+- **Solution** : Utiliser la configuration corrigée dans `ecosystem.config.js`
+- **Alternative** : Démarrage direct avec `bunx elizaos start`
 
 **"Too many active changes" (Git)**
 - Solution : Le `.gitignore` est configuré pour ignorer `node_modules/`
@@ -114,6 +220,23 @@ Pour déployer en production, consultez le [Guide de déploiement](docs/deploiem
 
 **"Port already in use"**
 - Changez le port dans `.env` ou arrêtez le processus qui utilise le port
+
+**"Agent reste en 'thinking' sans répondre"**
+- Vérifiez que vous n'avez qu'une seule clé API active
+- Utilisez `modelProvider: 'openai'` dans `character.ts`
+
+### Scripts de diagnostic
+
+```powershell
+# Diagnostic complet
+.\diagnostic.ps1
+
+# Test de la configuration PM2
+.\test-ctrl-c.ps1
+
+# Gestion multi-agents
+.\manage-agents.ps1 -Action status -Agent all
+```
 
 ## 📄 Licence
 

@@ -234,28 +234,392 @@ sudo useradd -m -s /bin/bash eliza
 sudo chown -R eliza:eliza /path/to/eliza
 ```
 
-## ❓ FAQ
+## ⚠️ Problèmes courants et solutions
 
-### Q: L'application ne démarre pas
-**A:** Vérifiez les logs avec `pm2 logs eliza-os` et les variables d'environnement.
+### 🚨 Problème : Ctrl+C ne permet pas d'arrêter le serveur
 
-### Q: Port déjà utilisé
+**Symptômes :**
+- Ctrl+C ne fonctionne pas pour arrêter le serveur
+- Le serveur redémarre automatiquement après Ctrl+C
+- Besoin d'utiliser `taskkill` ou `pm2 stop` pour arrêter
+
+**Cause principale :**
+Configuration PM2 avec `autorestart: true` qui intercepte les signaux SIGINT
+
+**Solutions :**
+
+#### Solution 1 : Configuration PM2 corrigée (Recommandée)
+```javascript
+// ecosystem.config.js
+module.exports = {
+  apps: [{
+    name: 'eliza-test-agent',
+    script: 'bun',
+    args: 'run start',
+    cwd: process.cwd(),
+    env: {
+      NODE_ENV: 'development',
+      PORT: 3000,
+      // ... autres variables
+    },
+    instances: 1,
+    autorestart: false,  // ← SOLUTION : Désactiver l'auto-restart
+    watch: false,
+    max_memory_restart: '1G',
+    kill_timeout: 5000,  // ← AJOUT : Timeout pour l'arrêt
+    wait_ready: true,    // ← AJOUT : Attendre que l'app soit prête
+    listen_timeout: 10000, // ← AJOUT : Timeout d'écoute
+    shutdown_with_message: true, // ← AJOUT : Arrêt propre
+    force: false         // ← AJOUT : Éviter l'arrêt forcé
+  }]
+}
+```
+
+#### Solution 2 : Démarrage direct sans PM2
+```bash
+# Pour le développement
+bun run build
+bunx elizaos start
+
+# Avec variables d'environnement
+$env:ELIZA_DISABLE_UPDATE_CHECK="true"; bunx elizaos start
+```
+
+#### Solution 3 : Commandes PM2 appropriées
+```bash
+# Arrêter proprement
+pm2 stop eliza-test-agent
+
+# Arrêter et supprimer
+pm2 delete eliza-test-agent
+
+# Voir les logs
+pm2 logs eliza-test-agent
+```
+
+#### Solution 4 : Arrêt d'urgence
+```powershell
+# Arrêter tous les processus Bun
+taskkill /F /IM bun.exe
+
+# Arrêter tous les processus Node
+taskkill /F /IM node.exe
+
+# Vérifier les processus sur le port 3000
+netstat -ano | findstr :3000
+```
+
+### 🔥 Problème : Agent reste en "thinking" sans répondre
+
+**Symptômes :**
+- Interface se lance correctement
+- Agent affiche "Eliza is thinking..." indéfiniment
+- Logs montrent "xhr poll error" dans le navigateur
+
+**Causes possibles :**
+1. **Double agent créé automatiquement** (cause principale)
+2. **Plugins qui ne se chargent pas correctement**
+3. **Conflit de modèles AI**
+
+**Solutions :**
+
+#### Solution 1 : Forcer un seul modèle (recommandé)
+Dans `src/character.ts`, ajouter :
+```typescript
+settings: {
+  model: 'gpt-4o-mini',
+  embeddingModel: 'text-embedding-3-small',
+  // Force l'utilisation exclusive d'OpenAI
+  modelProvider: 'openai',
+}
+```
+
+#### Solution 2 : Désactiver une clé API
+Dans `.env`, commenter une des clés :
+```env
+# ANTHROPIC_API_KEY=sk-ant-...
+# ou
+# OPENAI_API_KEY=sk-proj-...
+```
+
+#### Solution 3 : Nettoyage complet
+```bash
+# Arrêter tous les processus
+taskkill /F /IM bun.exe
+taskkill /F /IM node.exe
+
+# Nettoyer et réinstaller
+rm -rf node_modules dist bun.lock
+bun install
+bun run build
+```
+
+### 🔧 Problème : Port déjà utilisé
 **A:** Changez le port dans `.env` ou arrêtez le processus : `sudo lsof -i :3000`
 
-### Q: Erreur de base de données
+### 🔧 Problème : Erreur de base de données
 **A:** Vérifiez que PostgreSQL est démarré et que `DATABASE_URL` est correct.
 
-### Q: Clés API manquantes
+### 🔧 Problème : Clés API manquantes
 **A:** Vérifiez que `.env` contient au moins `OPENAI_API_KEY` ou `ANTHROPIC_API_KEY`.
 
-### Q: Mémoire insuffisante
+### 🔧 Problème : Mémoire insuffisante
 **A:** Augmentez `max_memory_restart` dans `ecosystem.config.js` ou ajoutez de la RAM.
+
+### 🔧 Problème : Double agent créé automatiquement
+**Cause :** ElizaOS détecte plusieurs clés API et crée automatiquement des agents pour chaque modèle.
+
+**Logs typiques :**
+```
+Info Final plugins being loaded: { plugins: [ "openai", "bootstrap" ] }  ← Agent 1
+Info Final plugins being loaded: { plugins: [ "anthropic", "openai" ] }  ← Agent 2
+```
+
+**Solution :** Utiliser `modelProvider: 'openai'` dans `character.ts` pour forcer un seul modèle.
+
+## 🔄 Gestion Multi-Agents
+
+### Architecture Multi-Agents
+
+```
+eliza/
+├── test-agent/          # Agent de développement/test
+├── finance-agent/        # Agent financier spécialisé  
+├── support-agent/        # Agent support client
+└── docs/                # Documentation
+```
+
+### Déploiement Isolé par Agent
+
+#### Configuration PM2 Multi-Agents
+
+```javascript
+// ecosystem-multi.config.js
+module.exports = {
+  apps: [
+    {
+      name: 'eliza-test-agent',
+      script: 'bun',
+      args: 'run start',
+      cwd: './test-agent',
+      env: { 
+        NODE_ENV: 'production', 
+        PORT: 3000,
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY
+      },
+      autorestart: false,
+      kill_timeout: 5000
+    },
+    {
+      name: 'eliza-finance-agent',
+      script: 'bun',
+      args: 'run start',
+      cwd: './finance-agent',
+      env: { 
+        NODE_ENV: 'production', 
+        PORT: 3001,
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY
+      },
+      autorestart: false,
+      kill_timeout: 5000
+    },
+    {
+      name: 'eliza-support-agent',
+      script: 'bun',
+      args: 'run start',
+      cwd: './support-agent',
+      env: { 
+        NODE_ENV: 'production', 
+        PORT: 3002,
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY
+      },
+      autorestart: false,
+      kill_timeout: 5000
+    }
+  ]
+}
+```
+
+#### Commandes Multi-Agents
+
+```bash
+# Démarrer tous les agents
+pm2 start ecosystem-multi.config.js
+
+# Démarrer un agent spécifique
+pm2 start ecosystem-multi.config.js --only eliza-test-agent
+
+# Arrêter un agent spécifique
+pm2 stop eliza-test-agent
+
+# Redémarrer un agent spécifique
+pm2 restart eliza-finance-agent
+
+# Voir tous les agents
+pm2 list
+
+# Logs d'un agent spécifique
+pm2 logs eliza-test-agent
+
+# Logs de tous les agents
+pm2 logs
+```
+
+### Déploiement Docker Multi-Agents
+
+#### Docker Compose Multi-Services
+
+```yaml
+# docker-compose.multi.yml
+version: '3.8'
+services:
+  test-agent:
+    build: ./test-agent
+    ports:
+      - "3000:3000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - NODE_ENV=production
+    volumes:
+      - ./test-agent/data:/app/data
+    restart: unless-stopped
+
+  finance-agent:
+    build: ./finance-agent
+    ports:
+      - "3001:3000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - NODE_ENV=production
+    volumes:
+      - ./finance-agent/data:/app/data
+    restart: unless-stopped
+
+  support-agent:
+    build: ./support-agent
+    ports:
+      - "3002:3000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - NODE_ENV=production
+    volumes:
+      - ./support-agent/data:/app/data
+    restart: unless-stopped
+```
+
+#### Commandes Docker Multi-Agents
+
+```bash
+# Démarrer tous les agents
+docker-compose -f docker-compose.multi.yml up -d
+
+# Démarrer un agent spécifique
+docker-compose -f docker-compose.multi.yml up -d test-agent
+
+# Arrêter un agent spécifique
+docker-compose -f docker-compose.multi.yml stop test-agent
+
+# Voir les logs d'un agent
+docker-compose -f docker-compose.multi.yml logs -f test-agent
+
+# Redémarrer un agent
+docker-compose -f docker-compose.multi.yml restart test-agent
+```
+
+### Scripts de Gestion Multi-Agents
+
+#### Script PowerShell de Sélection
+
+```powershell
+# manage-agents.ps1
+param(
+    [Parameter(Mandatory=$true)]
+    [ValidateSet("start", "stop", "restart", "logs", "status")]
+    [string]$Action,
+    
+    [Parameter(Mandatory=$false)]
+    [ValidateSet("test", "finance", "support", "all")]
+    [string]$Agent = "all"
+)
+
+$agents = @{
+    "test" = @{ path = "test-agent"; port = 3000 }
+    "finance" = @{ path = "finance-agent"; port = 3001 }
+    "support" = @{ path = "support-agent"; port = 3002 }
+}
+
+function Execute-Action {
+    param($agentName, $agentConfig)
+    
+    $agentPath = "C:\Cursor_Projects\eliza\$($agentConfig.path)"
+    
+    if (Test-Path $agentPath) {
+        Set-Location $agentPath
+        
+        switch ($Action) {
+            "start" {
+                Write-Host "🚀 Démarrage de l'agent $agentName" -ForegroundColor Green
+                pm2 start ecosystem.config.js --name "eliza-$agentName-agent"
+            }
+            "stop" {
+                Write-Host "⏹️ Arrêt de l'agent $agentName" -ForegroundColor Yellow
+                pm2 stop "eliza-$agentName-agent"
+            }
+            "restart" {
+                Write-Host "🔄 Redémarrage de l'agent $agentName" -ForegroundColor Cyan
+                pm2 restart "eliza-$agentName-agent"
+            }
+            "logs" {
+                Write-Host "📝 Logs de l'agent $agentName" -ForegroundColor Blue
+                pm2 logs "eliza-$agentName-agent"
+            }
+            "status" {
+                Write-Host "📊 Statut de l'agent $agentName" -ForegroundColor Magenta
+                pm2 show "eliza-$agentName-agent"
+            }
+        }
+    } else {
+        Write-Host "❌ Agent $agentName non trouvé" -ForegroundColor Red
+    }
+}
+
+if ($Agent -eq "all") {
+    foreach ($agentName in $agents.Keys) {
+        Execute-Action $agentName $agents[$agentName]
+    }
+} else {
+    Execute-Action $Agent $agents[$Agent]
+}
+
+# Afficher le statut global
+pm2 list
+```
+
+#### Usage du Script
+
+```powershell
+# Démarrer tous les agents
+.\manage-agents.ps1 -Action start -Agent all
+
+# Démarrer l'agent test
+.\manage-agents.ps1 -Action start -Agent test
+
+# Arrêter l'agent finance
+.\manage-agents.ps1 -Action stop -Agent finance
+
+# Voir les logs de l'agent support
+.\manage-agents.ps1 -Action logs -Agent support
+
+# Statut de tous les agents
+.\manage-agents.ps1 -Action status -Agent all
+```
 
 ## 📞 Support
 
 - **Issues** : [GitHub Issues](https://github.com/denelfrederic/eliza/issues)
 - **Documentation ElizaOS** : [ElizaOS Docs](https://docs.elizaos.com)
 - **Communauté** : [ElizaOS Discord](https://discord.gg/elizaos)
+- **Guide Démarrage/Arrêt** : [docs/demarrage-arret.md](demarrage-arret.md)
 
 ---
 

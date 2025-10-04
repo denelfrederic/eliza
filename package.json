@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@elizaos/plugin-anthropic": "1.0.6",
+    "@elizaos/plugin-openai": "1.5.15"
+  },
+  "devDependencies": {
+    "@elizaos/cli": "^1.6.1"
+  }
+}
