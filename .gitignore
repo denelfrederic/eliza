@@ -83,3 +83,6 @@ temp/
 agents/
 data/
 uploads/
+.eliza/
+*_fsm
+*.fsm
