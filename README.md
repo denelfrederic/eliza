@@ -75,23 +75,23 @@ eliza/
    # Éditer .env avec vos clés API
    ```
 
-5. **Lancer en développement**
-   
+5. **Lancer en développement avec Git Bash**
+
    **⚠️ Important : Utilisez Git Bash en mode administrateur**
-   
+
    ```bash
-   # Méthode 1 : Script automatisé (Recommandé)
-   ./start-git-bash.sh
-   
-   # Méthode 2 : Démarrage direct (Ctrl+C fonctionne)
    cd test-agent
+
+   # Méthode 1 : Script automatisé (Recommandé)
+   ./start.sh
+
+   # Méthode 2 : Démarrage direct
    bun run build && bunx elizaos start
-   
-   # Méthode 3 : Avec PM2 (production)
-   pm2 start ecosystem.config.js
-   
-   # Méthode 4 : Mode développement
+
+   # Méthode 3 : Mode développement (hot reload)
    bunx elizaos dev
+
+   # Pour arrêter : Ctrl+C (fonctionne directement !)
    ```
 
 ## 🔄 Gestion Multi-Agents
@@ -108,39 +108,27 @@ eliza/
 └── docs/               # Documentation complète
 ```
 
-### **Démarrage Isolé par Agent**
+### **Démarrage Isolé par Agent (Git Bash)**
 
-**⚠️ Utilisez Git Bash en mode administrateur pour éviter les problèmes de PATH**
+**⚠️ Utilisez Git Bash en mode administrateur**
 
-#### **Script de Gestion Multi-Agents**
+Chaque agent se lance indépendamment dans un terminal Git Bash séparé :
+
 ```bash
-# Démarrer un agent spécifique
-./manage-agents.ps1 -Action start -Agent test
+# Terminal 1 : Agent de test (port 3000)
+cd /c/cursor-projects/eliza/test-agent
+./start.sh
 
-# Démarrer tous les agents
-./manage-agents.ps1 -Action start -Agent all
+# Terminal 2 : Agent financier (port 3001)
+cd /c/cursor-projects/eliza/finance-agent
+PORT=3001 ./start.sh
 
-# Arrêter un agent
-./manage-agents.ps1 -Action stop -Agent finance
-
-# Voir les logs
-./manage-agents.ps1 -Action logs -Agent support
+# Terminal 3 : Agent support (port 3002)
+cd /c/cursor-projects/eliza/support-agent
+PORT=3002 ./start.sh
 ```
 
-#### **Commandes PM2 Multi-Agents**
-```bash
-# Démarrer tous les agents
-pm2 start ecosystem-multi.config.js
-
-# Démarrer un agent spécifique
-pm2 start ecosystem-multi.config.js --only eliza-test-agent
-
-# Voir tous les agents
-pm2 list
-
-# Logs d'un agent spécifique
-pm2 logs eliza-test-agent
-```
+**Arrêt :** `Ctrl+C` dans chaque terminal respectif
 
 ### **Déploiement Isolé**
 
