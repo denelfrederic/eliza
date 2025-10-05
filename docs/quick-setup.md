@@ -58,13 +58,24 @@ export const character: Character = {
 };
 ```
 
-### **5️⃣ Lancer l'agent**
+### **5️⃣ Lancer l'agent avec Git Bash**
+
+**⚠️ Important : Utilisez Git Bash en mode administrateur**
 
 ```bash
+# Méthode 1 : Avec le script (recommandé)
+./start.sh
+
+# Méthode 2 : Commande directe
 bun run build && bunx elizaos start
+
+# Méthode 3 : Mode développement (hot reload)
+bunx elizaos dev
 ```
 
 ✅ **Accédez à http://localhost:3000**
+
+✅ **Pour arrêter : Ctrl+C** (fonctionne directement avec Git Bash)
 
 ---
 
@@ -197,26 +208,28 @@ ELIZA_SERVER_WEBSOCKET_ENABLED=true
 
 ---
 
-## 🔄 Commandes utiles
+## 🔄 Commandes utiles (Git Bash)
 
 ```bash
-# Démarrer l'agent
+# Démarrer l'agent (méthode recommandée)
+./start.sh
+
+# Démarrage direct
 bun run build && bunx elizaos start
 
 # Mode développement (hot reload)
 bunx elizaos dev
 
 # Arrêter l'agent
-# Dans Git Bash : Ctrl+C
-# Ou en dernier recours :
-taskkill //F //IM bun.exe
+Ctrl+C  # ← Simple et efficace !
 
-# Voir les logs en temps réel
-pm2 logs eliza-test-agent
+# En dernier recours si Ctrl+C ne fonctionne pas
+taskkill //F //IM bun.exe
 
 # Nettoyer et réinstaller
 rm -rf node_modules bun.lock
 bun install
+bun run build
 ```
 
 ---
