@@ -134,10 +134,10 @@ PORT=3002 ./start.sh
 
 Chaque agent peut être déployé indépendamment :
 
-- **Ports différents** : 3000, 3001, 3002...
-- **Configurations séparées** : Chaque agent a son `ecosystem.config.js`
-- **Environnements isolés** : Variables d'environnement spécifiques
-- **Déploiement Docker** : Chaque agent peut être conteneurisé séparément
+- **Ports différents** : 3000, 3001, 3002... (configurés via `.env`)
+- **Configurations séparées** : Chaque agent a son propre `src/character.ts`
+- **Environnements isolés** : Variables d'environnement spécifiques dans chaque `.env`
+- **Développement simple** : Un terminal Git Bash par agent
 
 ## 🤖 Agents spécialisés
 
