@@ -7,8 +7,17 @@ Ce guide explique comment déployer ELIZA OS en production sur un serveur Linux 
 - **Serveur** : Linux (Ubuntu 20.04+) ou Windows Server
 - **Runtime** : Bun installé globalement
 - **Git** : Pour cloner le dépôt
+- **Terminal** : **Git Bash en mode administrateur** (Windows) ou Terminal standard (Linux)
 - **Accès réseau** : Port ouvert (par défaut 3000)
 - **Clés API** : OpenAI ou Anthropic configurées
+
+### **⚠️ Windows : Utilisation de Git Bash en Mode Administrateur**
+
+**Pourquoi Git Bash en mode administrateur ?**
+- ✅ **PATH complet** : Accès à Bun, Node.js, Git sans configuration
+- ✅ **Permissions** : Installation et configuration sans restrictions
+- ✅ **Compatibilité** : Commandes Unix/Linux natives
+- ✅ **Évite les erreurs** : "bun n'est pas reconnu", problèmes de permissions
 
 ## 🔐 Sécurité
 
@@ -620,6 +629,7 @@ pm2 list
 - **Documentation ElizaOS** : [ElizaOS Docs](https://docs.elizaos.com)
 - **Communauté** : [ElizaOS Discord](https://discord.gg/elizaos)
 - **Guide Démarrage/Arrêt** : [docs/demarrage-arret.md](demarrage-arret.md)
+- **Guide Git Bash** : [docs/git-bash-guide.md](git-bash-guide.md)
 
 ---
 

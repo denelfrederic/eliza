@@ -41,6 +41,7 @@ eliza/
 
 - [Bun](https://bun.sh) (recommandé) ou Node.js 18+
 - Git
+- **Git Bash en mode administrateur** (recommandé pour éviter les problèmes de PATH)
 - Clé API OpenAI ou Anthropic
 
 ## 🚀 Installation locale
@@ -75,14 +76,21 @@ eliza/
    ```
 
 5. **Lancer en développement**
+   
+   **⚠️ Important : Utilisez Git Bash en mode administrateur**
+   
    ```bash
-   # Méthode 1 : Démarrage direct (Ctrl+C fonctionne)
+   # Méthode 1 : Script automatisé (Recommandé)
+   ./start-git-bash.sh
+   
+   # Méthode 2 : Démarrage direct (Ctrl+C fonctionne)
+   cd test-agent
    bun run build && bunx elizaos start
    
-   # Méthode 2 : Avec PM2 (production)
+   # Méthode 3 : Avec PM2 (production)
    pm2 start ecosystem.config.js
    
-   # Méthode 3 : Mode développement
+   # Méthode 4 : Mode développement
    bunx elizaos dev
    ```
 
@@ -102,19 +110,21 @@ eliza/
 
 ### **Démarrage Isolé par Agent**
 
+**⚠️ Utilisez Git Bash en mode administrateur pour éviter les problèmes de PATH**
+
 #### **Script de Gestion Multi-Agents**
-```powershell
+```bash
 # Démarrer un agent spécifique
-.\manage-agents.ps1 -Action start -Agent test
+./manage-agents.ps1 -Action start -Agent test
 
 # Démarrer tous les agents
-.\manage-agents.ps1 -Action start -Agent all
+./manage-agents.ps1 -Action start -Agent all
 
 # Arrêter un agent
-.\manage-agents.ps1 -Action stop -Agent finance
+./manage-agents.ps1 -Action stop -Agent finance
 
 # Voir les logs
-.\manage-agents.ps1 -Action logs -Agent support
+./manage-agents.ps1 -Action logs -Agent support
 ```
 
 #### **Commandes PM2 Multi-Agents**
@@ -195,9 +205,17 @@ bun run lint            # Linting
 
 ## 📚 Documentation
 
+### **🚀 Démarrage rapide**
+- **[⚡ Configuration Rapide](docs/quick-setup.md)** - Lancez votre premier agent en 5 minutes
+
+### **📖 Guides complets**
 - **[Guide de Déploiement](docs/deploiement.md)** - Déploiement en production
 - **[Guide Démarrage/Arrêt](docs/demarrage-arret.md)** - Gestion des agents
 - **[Architecture Multi-Agents](docs/architecture-multi-agents.md)** - Organisation du projet
+- **[Guide Git Bash](docs/git-bash-guide.md)** - Utilisation de Git Bash en mode administrateur
+
+### **🔧 Dépannage**
+- **[Agent ne répond pas](docs/troubleshooting-agent-no-response.md)** - Solution complète au problème de non-réponse
 
 ## 🚀 Déploiement
 
@@ -222,7 +240,9 @@ Pour déployer en production, consultez le [Guide de déploiement](docs/deploiem
 - Changez le port dans `.env` ou arrêtez le processus qui utilise le port
 
 **"Agent reste en 'thinking' sans répondre"**
-- Vérifiez que vous n'avez qu'une seule clé API active
+- **Solution complète** : Consultez le [Guide de dépannage détaillé](docs/troubleshooting-agent-no-response.md)
+- Vérifiez que les plugins `@elizaos/plugin-openai` et `@elizaos/plugin-bootstrap` sont dans `character.ts`
+- Vérifiez que `zod` est en version 4.x dans `package.json`
 - Utilisez `modelProvider: 'openai'` dans `character.ts`
 
 ### Scripts de diagnostic

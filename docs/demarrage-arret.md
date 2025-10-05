@@ -19,6 +19,14 @@
 
 **Solution** : Configuration PM2 optimisée avec gestion propre des signaux
 
+### **⚠️ Important : Utilisation de Git Bash en Mode Administrateur**
+
+**Pourquoi Git Bash en mode administrateur ?**
+- ✅ **PATH complet** : Accès à tous les outils (Bun, Node.js, Git)
+- ✅ **Permissions élevées** : Installation et configuration sans restrictions
+- ✅ **Compatibilité Unix** : Commandes Linux/Unix natives
+- ✅ **Évite les erreurs** : "bun n'est pas reconnu", problèmes de permissions
+
 ### **Méthodes Disponibles**
 
 | Méthode | Usage | Avantages | Inconvénients |
@@ -31,7 +39,23 @@
 
 ### **1. Démarrage Direct (Développement)**
 
-#### **Script PowerShell Recommandé**
+**⚠️ Utilisez Git Bash en mode administrateur**
+
+#### **Script Bash Recommandé**
+```bash
+# start-dev.sh
+cd /c/cursor-projects/eliza/test-agent
+
+echo "🔨 Building project..."
+bun run build
+
+echo "🚀 Starting agent directly..."
+export ELIZA_DISABLE_UPDATE_CHECK="true"
+export IGNORE_BOOTSTRAP="true"
+bunx elizaos start
+```
+
+#### **Script PowerShell (Alternative)**
 ```powershell
 # start-dev.ps1
 Set-Location "C:\Cursor_Projects\eliza\test-agent"
@@ -45,8 +69,21 @@ $env:IGNORE_BOOTSTRAP = "true"
 bunx elizaos start
 ```
 
-#### **Commandes Directes**
+#### **Commandes Directes (Git Bash)**
 ```bash
+# Build + Start
+bun run build && bunx elizaos start
+
+# Mode développement avec hot reload
+bunx elizaos dev
+
+# Avec variables d'environnement
+export LOG_LEVEL="debug"
+bunx elizaos start
+```
+
+#### **Commandes PowerShell (Alternative)**
+```powershell
 # Build + Start
 bun run build && bunx elizaos start
 
