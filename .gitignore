@@ -87,3 +87,16 @@ uploads/
 .eliza/
 *_fsm
 *.fsm
+
+# Scripts PM2/PowerShell (utilisation Git Bash uniquement)
+ecosystem.config.js
+ecosystem.config.cjs
+ecosystem-multi.config.js
+*.ps1
+*.bat
+
+# Fichiers de sauvegarde
+*.backup
+*.bak
+*.sauv
+*~

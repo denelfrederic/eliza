@@ -213,37 +213,42 @@ Pour déployer en production, consultez le [Guide de déploiement](docs/deploiem
 
 ### Erreurs courantes
 
-**"Ctrl+C ne fonctionne pas pour arrêter le serveur"**
-- **Cause** : Configuration PM2 avec `autorestart: true`
-- **Solution** : Utiliser la configuration corrigée dans `ecosystem.config.js`
-- **Alternative** : Démarrage direct avec `bunx elizaos start`
-
-**"Too many active changes" (Git)**
-- Solution : Le `.gitignore` est configuré pour ignorer `node_modules/`
+**"bun n'est pas reconnu"**
+- **Cause** : Git Bash n'est pas en mode administrateur
+- **Solution** : Redémarrez Git Bash en tant qu'administrateur
 
 **"API key missing"**
 - Vérifiez que votre clé API est correctement définie dans `.env`
+- Ne commitez JAMAIS le fichier `.env`
 
 **"Port already in use"**
-- Changez le port dans `.env` ou arrêtez le processus qui utilise le port
+```bash
+# Trouver et tuer le processus
+netstat -ano | grep :3000
+taskkill //F //PID <PID>
+
+# Ou changer le port dans .env
+PORT=3001
+```
 
 **"Agent reste en 'thinking' sans répondre"**
 - **Solution complète** : Consultez le [Guide de dépannage détaillé](docs/troubleshooting-agent-no-response.md)
 - Vérifiez que les plugins `@elizaos/plugin-openai` et `@elizaos/plugin-bootstrap` sont dans `character.ts`
 - Vérifiez que `zod` est en version 4.x dans `package.json`
-- Utilisez `modelProvider: 'openai'` dans `character.ts`
 
-### Scripts de diagnostic
+### Commandes Git Bash utiles
 
-```powershell
-# Diagnostic complet
-.\diagnostic.ps1
+```bash
+# Nettoyer complètement
+rm -rf node_modules bun.lock dist
+bun install
+bun run build
 
-# Test de la configuration PM2
-.\test-ctrl-c.ps1
+# Vérifier qu'aucune clé API n'est exposée
+grep -r "sk-" . --exclude-dir=node_modules --exclude-dir=.git
 
-# Gestion multi-agents
-.\manage-agents.ps1 -Action status -Agent all
+# Voir les logs en temps réel
+tail -f .eliza/logs/*.log
 ```
 
 ## 📄 Licence
