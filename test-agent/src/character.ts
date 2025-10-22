@@ -11,6 +11,7 @@ export const character: Character = {
   plugins: [
     '@elizaos/plugin-openai',
     '@elizaos/plugin-bootstrap',
+    '@elizaos/plugin-knowledge',
   ],
   settings: {
     secrets: {},
