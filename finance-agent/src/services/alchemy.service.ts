@@ -21,13 +21,37 @@ export interface TokenMetadata {
  * Service Alchemy pour récupérer les balances de tokens ERC-20
  * Documentation: https://docs.alchemy.com/reference/alchemy-gettokenbalances
  */
+/**
+ * Mapping des chaînes supportées par Alchemy
+ */
+export const ALCHEMY_CHAIN_ENDPOINTS: Record<string, string> = {
+  ethereum: 'eth-mainnet',
+  polygon: 'polygon-mainnet',
+  arbitrum: 'arb-mainnet',
+  optimism: 'opt-mainnet',
+  base: 'base-mainnet',
+  // Alchemy supporte aussi : polygon-amoy, arb-sepolia, opt-sepolia, base-sepolia (testnets)
+};
+
 export class AlchemyService {
   private apiKey: string;
   private baseUrl: string;
+  private chain: string;
 
-  constructor(apiKey?: string) {
+  constructor(apiKey?: string, chain: string = 'ethereum') {
     this.apiKey = apiKey || 'demo'; // Utiliser 'demo' si pas de clé
-    this.baseUrl = `https://eth-mainnet.g.alchemy.com/v2/${this.apiKey}`;
+    this.chain = chain.toLowerCase();
+
+    // Obtenir l'endpoint Alchemy pour cette chaîne
+    const alchemyEndpoint = ALCHEMY_CHAIN_ENDPOINTS[this.chain];
+    if (!alchemyEndpoint) {
+      logger.warn(`Chain ${chain} not supported by Alchemy, defaulting to Ethereum`);
+      this.baseUrl = `https://eth-mainnet.g.alchemy.com/v2/${this.apiKey}`;
+    } else {
+      this.baseUrl = `https://${alchemyEndpoint}.g.alchemy.com/v2/${this.apiKey}`;
+    }
+
+    logger.info(`AlchemyService initialized for chain: ${this.chain}, endpoint: ${this.baseUrl.split('/v2/')[0]}`);
   }
 
   /**

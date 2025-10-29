@@ -136,9 +136,145 @@ const surveillancePortefeuilleAction: Action = {
       // Utilisation d'APIs publiques pour lire les données du portefeuille
       // Etherscan API V2 (gratuite) - Documentation: https://docs.etherscan.io/introduction
       const rawApiKey = process.env.ETHERSCAN_API_KEY?.trim();
-      const chainName = process.env.EVM_CHAINS?.trim() || 'ethereum';
-      
-      // Mapping des noms de chaînes vers leurs chainids (API V2)
+      const chainsConfig = process.env.EVM_CHAINS?.trim() || 'ethereum';
+
+      // Parser la configuration des chaînes
+      let chainsToQuery: string[] = [];
+      if (chainsConfig.toLowerCase() === 'all') {
+        // Importer la liste complète des chaînes supportées
+        const { SUPPORTED_CHAINS } = await import('./services/multi-chain-portfolio.service');
+        chainsToQuery = Object.keys(SUPPORTED_CHAINS);
+        logger.info(`Multi-chain mode enabled: scanning all ${chainsToQuery.length} supported chains`);
+      } else {
+        // Chaînes spécifiques séparées par des virgules
+        chainsToQuery = chainsConfig.split(',').map(c => c.trim().toLowerCase());
+        logger.info(`Multi-chain mode: scanning ${chainsToQuery.length} chain(s): ${chainsToQuery.join(', ')}`);
+      }
+
+      // Ne pas utiliser "YourApiKeyToken" comme valeur par défaut - c'est déprécié
+      const etherscanApiKey = rawApiKey && rawApiKey !== 'YourApiKeyToken' ? rawApiKey : undefined;
+      const hasApiKey = !!etherscanApiKey;
+      const alchemyApiKey = process.env.ALCHEMY_API_KEY?.trim() || 'demo';
+
+      logger.info(`Configuration: chains=${chainsToQuery.join(',')}, hasEtherscanKey=${hasApiKey}, hasAlchemyKey=${alchemyApiKey !== 'demo'}`);
+
+      // Envoyer une réponse immédiate pour informer l'utilisateur que le traitement est en cours
+      const chainText = chainsToQuery.length > 1
+        ? `Analyse multi-chain sur ${chainsToQuery.length} réseaux (${chainsToQuery.join(', ')})...`
+        : `Analyse de votre portefeuille sur ${chainsToQuery[0]}...`;
+
+      await callback({
+        text: `🔄 Récupération des données de portefeuille en cours...\n\n${chainText}`,
+        actions: ['SURVEILLANCE_PORTEFEUILLE'],
+        source: message.content.source,
+      });
+
+      // ===== MODE MULTI-CHAIN =====
+      if (chainsToQuery.length > 1) {
+        logger.info('Using multi-chain portfolio service...');
+
+        try {
+          const { MultiChainPortfolioService } = await import('./services/multi-chain-portfolio.service');
+          const multiChainService = new MultiChainPortfolioService(etherscanApiKey, alchemyApiKey);
+
+          const multiPortfolio = await multiChainService.getMultiChainPortfolio(publicKey, chainsToQuery);
+
+          logger.info(`Multi-chain portfolio retrieved: ${multiPortfolio.chainsWithAssets} chains with assets out of ${multiPortfolio.totalChains}`);
+
+          // Construire le message multi-chain
+          let portfolioText = `📊 **Votre Portefeuille Multi-Chain**\n\n`;
+          portfolioText += `Adresse : \`${publicKey}\`\n`;
+          portfolioText += `Chaînes scannées : ${multiPortfolio.totalChains}\n`;
+          portfolioText += `Chaînes avec actifs : ${multiPortfolio.chainsWithAssets}\n`;
+          portfolioText += `Mode : Lecture seule (surveillance uniquement)\n\n`;
+          portfolioText += `---\n\n`;
+
+          // Afficher chaque chaîne avec des actifs
+          multiPortfolio.chains.forEach((chain) => {
+            const hasNative = parseFloat(chain.nativeBalance) > 0;
+            const hasTokens = chain.tokens.length > 0;
+
+            if (!hasNative && !hasTokens && !chain.error) {
+              return; // Skip chaînes sans actifs
+            }
+
+            portfolioText += `## 🔗 ${chain.chainName}\n\n`;
+
+            if (chain.error) {
+              portfolioText += `⚠️ Erreur : ${chain.error}\n\n`;
+              portfolioText += `---\n\n`;
+              return;
+            }
+
+            // Balance native
+            if (hasNative) {
+              portfolioText += `**${chain.nativeCurrency}**\n`;
+              portfolioText += `Solde : ${chain.nativeBalance} ${chain.nativeCurrency}\n\n`;
+            }
+
+            // Tokens ERC-20
+            if (hasTokens) {
+              portfolioText += `**Tokens (${chain.tokens.length})**\n\n`;
+              chain.tokens.forEach((token, index) => {
+                portfolioText += `${index + 1}. **${token.symbol}** (${token.name})\n`;
+                portfolioText += `   Solde : ${parseFloat(token.balance).toLocaleString('fr-FR', { maximumFractionDigits: 6 })} ${token.symbol}\n`;
+                portfolioText += `   Adresse : \`${token.address}\`\n\n`;
+              });
+            }
+
+            if (!hasNative && !hasTokens) {
+              portfolioText += `Aucun actif détecté\n\n`;
+            }
+
+            portfolioText += `---\n\n`;
+          });
+
+          // Statistiques globales
+          const totalAssets = multiPortfolio.chains.reduce((sum, chain) => {
+            const nativeCount = parseFloat(chain.nativeBalance) > 0 ? 1 : 0;
+            return sum + nativeCount + chain.tokens.length;
+          }, 0);
+
+          portfolioText += `📈 **Résumé Global**\n\n`;
+          portfolioText += `Total d'actifs : ${totalAssets}\n`;
+          portfolioText += `Réseaux actifs : ${multiPortfolio.chainsWithAssets}/${multiPortfolio.totalChains}\n\n`;
+
+          portfolioText += `💡 **Note :** Pour voir uniquement une chaîne, configurez \`EVM_CHAINS=ethereum\` dans votre .env\n`;
+
+          const responseContent: Content = {
+            text: portfolioText,
+            actions: ['SURVEILLANCE_PORTEFEUILLE'],
+            source: message.content.source,
+          };
+
+          await callback(responseContent);
+
+          return {
+            text: 'Surveillance multi-chain du portefeuille terminée',
+            values: {
+              success: true,
+              publicKey,
+              mode: 'multi-chain',
+              chains: multiPortfolio.totalChains,
+              chainsWithAssets: multiPortfolio.chainsWithAssets,
+            },
+            data: {
+              actionName: 'SURVEILLANCE_PORTEFEUILLE',
+              messageId: message.id,
+              timestamp: Date.now(),
+              multiPortfolio,
+            },
+            success: true,
+          };
+        } catch (multiChainError) {
+          logger.error(`Multi-chain portfolio failed: ${multiChainError instanceof Error ? multiChainError.message : String(multiChainError)}`);
+          // Fallback : continuer avec le mode single-chain sur la première chaîne
+          logger.info('Falling back to single-chain mode on first chain...');
+        }
+      }
+
+      // ===== MODE SINGLE-CHAIN (code original) =====
+      const chainName = chainsToQuery[0] || 'ethereum';
       const chainIdMap: Record<string, number> = {
         'ethereum': 1,
         'base': 8453,
@@ -150,38 +286,16 @@ const surveillancePortefeuilleAction: Action = {
         'fantom': 250,
         'cronos': 25,
       };
-      
-      const chainid = chainIdMap[chainName.toLowerCase()] || 1; // Par défaut: Ethereum
-      
-      // Ne pas utiliser "YourApiKeyToken" comme valeur par défaut - c'est déprécié
-      // L'API V2 nécessite une clé API valide
-      const etherscanApiKey = rawApiKey && rawApiKey !== 'YourApiKeyToken' ? rawApiKey : undefined;
-      const hasApiKey = !!etherscanApiKey;
-      const apiKeyPreview = hasApiKey 
-        ? `${etherscanApiKey.substring(0, 8)}...${etherscanApiKey.substring(etherscanApiKey.length - 4)}`
-        : 'NOT SET';
-      
-      logger.info(`Configuration: chain=${chainName} (chainid=${chainid}), hasApiKey=${hasApiKey}, apiKeyPreview=${apiKeyPreview}`);
-      
-      // Utiliser l'API V2 d'Etherscan (URL unifiée pour toutes les chaînes)
-      // Documentation: https://docs.etherscan.io/introduction
+      const chainid = chainIdMap[chainName.toLowerCase()] || 1;
       const apiUrl = 'https://api.etherscan.io/v2/api';
 
-      logger.info(`Fetching portfolio data for ${publicKey} on ${chainName} (chainid: ${chainid})`);
-      logger.info(`Using Etherscan API V2: ${apiUrl}`);
-
-      // Envoyer une réponse immédiate pour informer l'utilisateur que le traitement est en cours
-      await callback({
-        text: '🔄 Récupération des données de portefeuille en cours...\n\nAnalyse de votre portefeuille Ethereum...',
-        actions: ['SURVEILLANCE_PORTEFEUILLE'],
-        source: message.content.source,
-      });
+      logger.info(`Single-chain mode: ${chainName} (chainid: ${chainid})`);
 
       // Construire l'URL avec chainid et clé API (V2 nécessite une clé API)
       const ethBalanceUrl = hasApiKey
         ? `${apiUrl}?chainid=${chainid}&module=account&action=balance&address=${publicKey}&tag=latest&apikey=${etherscanApiKey}`
         : `${apiUrl}?chainid=${chainid}&module=account&action=balance&address=${publicKey}&tag=latest`;
-      
+
       let ethBalance = '0';
       let tokenList: any[] = [];
       let apiErrorDetails: any = null;
