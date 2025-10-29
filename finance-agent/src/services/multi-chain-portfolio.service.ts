@@ -53,28 +53,28 @@ export const SUPPORTED_CHAINS: Record<string, ChainConfig> = {
     name: 'BNB Smart Chain',
     nativeCurrency: 'BNB',
     etherscanApiUrl: 'https://api.etherscan.io/v2/api',
-    supportsAlchemy: false,
+    supportsAlchemy: true,  // ✅ Alchemy supporte BSC (bnb-mainnet)
   },
   avalanche: {
     id: 43114,
     name: 'Avalanche C-Chain',
     nativeCurrency: 'AVAX',
     etherscanApiUrl: 'https://api.etherscan.io/v2/api',
-    supportsAlchemy: false,
+    supportsAlchemy: true,  // ✅ Alchemy supporte Avalanche
   },
   fantom: {
     id: 250,
     name: 'Fantom',
     nativeCurrency: 'FTM',
     etherscanApiUrl: 'https://api.etherscan.io/v2/api',
-    supportsAlchemy: false,
+    supportsAlchemy: true,  // ✅ Alchemy supporte Fantom
   },
   cronos: {
     id: 25,
     name: 'Cronos',
     nativeCurrency: 'CRO',
     etherscanApiUrl: 'https://api.etherscan.io/v2/api',
-    supportsAlchemy: false,
+    supportsAlchemy: true,  // ✅ Alchemy supporte Cronos
   },
 };
 
@@ -184,17 +184,43 @@ export class MultiChainPortfolioService {
 
     // 2. Récupérer les tokens ERC-20
     let tokens: TokenBalance[] = [];
+    let tokenError: string | undefined;
 
-    if (chainConfig.supportsAlchemy && this.alchemyApiKey) {
-      // Utiliser Alchemy si supporté et clé disponible
-      tokens = await this.getTokensViaAlchemy(address, chainName);
-    } else {
-      // Fallback: utiliser Etherscan (limitation à 20 tokens)
-      logger.warn(`Alchemy not available for ${chainName}, token listing may be incomplete`);
-      tokens = await this.getTokensViaEtherscan(address, chainConfig);
+    if (chainConfig.supportsAlchemy && this.alchemyApiKey && this.alchemyApiKey !== 'demo') {
+      // Utiliser Alchemy si supporté et clé valide disponible
+      logger.info(`Using Alchemy for ${chainName} tokens...`);
+      try {
+        tokens = await this.getTokensViaAlchemy(address, chainName);
+      } catch (alchemyError) {
+        const errorMsg = alchemyError instanceof Error ? alchemyError.message : String(alchemyError);
+        logger.error(`Alchemy failed for ${chainName}: ${errorMsg}`);
+
+        // Message d'erreur explicite selon le type d'erreur
+        if (errorMsg.includes('not enabled')) {
+          tokenError = `❌ Réseau ${chainConfig.name} non activé sur votre app Alchemy.\n` +
+            `   → Activez-le sur : https://dashboard.alchemy.com/apps (section Networks)\n` +
+            `   → Ou créez une nouvelle app avec ce réseau activé`;
+        } else if (errorMsg.includes('Invalid API')) {
+          tokenError = `❌ Clé Alchemy invalide ou expirée.\n` +
+            `   → Vérifiez ALCHEMY_API_KEY dans votre .env\n` +
+            `   → Obtenez une nouvelle clé sur https://www.alchemy.com/`;
+        } else {
+          tokenError = `❌ Erreur Alchemy : ${errorMsg}`;
+        }
+      }
+    } else if (!chainConfig.supportsAlchemy) {
+      // Chaîne non supportée par Alchemy
+      tokenError = `⚠️ ${chainConfig.name} n'est pas supporté par Alchemy.\n` +
+        `   → Tokens non disponibles pour cette chaîne\n` +
+        `   → Seule la balance native (${chainConfig.nativeCurrency}) est affichée`;
+    } else if (!this.alchemyApiKey || this.alchemyApiKey === 'demo') {
+      // Pas de clé Alchemy configurée
+      tokenError = `⚠️ Clé Alchemy manquante ou en mode demo.\n` +
+        `   → Configurez ALCHEMY_API_KEY dans votre .env\n` +
+        `   → Obtenez une clé gratuite sur https://www.alchemy.com/`;
     }
 
-    logger.info(`Portfolio on ${chainConfig.name}: ${nativeBalance} ${chainConfig.nativeCurrency}, ${tokens.length} tokens`);
+    logger.info(`Portfolio on ${chainConfig.name}: ${nativeBalance} ${chainConfig.nativeCurrency}, ${tokens.length} tokens${tokenError ? ' (error: ' + tokenError.substring(0, 50) + '...)' : ''}`);
 
     return {
       chainName: chainConfig.name,
@@ -202,6 +228,7 @@ export class MultiChainPortfolioService {
       nativeCurrency: chainConfig.nativeCurrency,
       nativeBalance,
       tokens,
+      error: tokenError,
     };
   }
 
@@ -303,13 +330,4 @@ export class MultiChainPortfolioService {
     }
   }
 
-  /**
-   * Récupère les tokens via Etherscan (fallback, limité)
-   */
-  private async getTokensViaEtherscan(address: string, chainConfig: ChainConfig): Promise<TokenBalance[]> {
-    // Implementation simplifiée - utiliserait l'approche tokentx existante
-    // Pour l'instant, retourne un tableau vide
-    logger.info(`Etherscan token listing not fully implemented for ${chainConfig.name}`);
-    return [];
-  }
 }

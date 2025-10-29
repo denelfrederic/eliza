@@ -200,12 +200,6 @@ const surveillancePortefeuilleAction: Action = {
 
             portfolioText += `## 🔗 ${chain.chainName}\n\n`;
 
-            if (chain.error) {
-              portfolioText += `⚠️ Erreur : ${chain.error}\n\n`;
-              portfolioText += `---\n\n`;
-              return;
-            }
-
             // Balance native
             if (hasNative) {
               portfolioText += `**${chain.nativeCurrency}**\n`;
@@ -220,9 +214,12 @@ const surveillancePortefeuilleAction: Action = {
                 portfolioText += `   Solde : ${parseFloat(token.balance).toLocaleString('fr-FR', { maximumFractionDigits: 6 })} ${token.symbol}\n`;
                 portfolioText += `   Adresse : \`${token.address}\`\n\n`;
               });
+            } else if (chain.error) {
+              // Afficher l'erreur seulement s'il n'y a pas de tokens
+              portfolioText += `**Tokens**\n${chain.error}\n\n`;
             }
 
-            if (!hasNative && !hasTokens) {
+            if (!hasNative && !hasTokens && !chain.error) {
               portfolioText += `Aucun actif détecté\n\n`;
             }
 

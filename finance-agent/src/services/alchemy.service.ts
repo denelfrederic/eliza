@@ -30,6 +30,10 @@ export const ALCHEMY_CHAIN_ENDPOINTS: Record<string, string> = {
   arbitrum: 'arb-mainnet',
   optimism: 'opt-mainnet',
   base: 'base-mainnet',
+  bsc: 'bnb-mainnet',
+  avalanche: 'avax-mainnet',
+  fantom: 'fantom-mainnet',
+  cronos: 'cronos-mainnet',
   // Alchemy supporte aussi : polygon-amoy, arb-sepolia, opt-sepolia, base-sepolia (testnets)
 };
 
