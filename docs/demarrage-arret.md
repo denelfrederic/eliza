@@ -243,7 +243,27 @@ docker-compose down -v
 
 ### **4. Arrêt d'Urgence**
 
-#### **Si Ctrl+C ne fonctionne toujours pas**
+#### **Si Ctrl+C ne fonctionne toujours pas (Git Bash)**
+
+```bash
+# Arrêt forcé de tous les processus Bun (COMMANDE CORRECTE)
+cmd.exe //c "taskkill /F /IM bun.exe"
+
+# Arrêt forcé de tous les processus Node
+cmd.exe //c "taskkill /F /IM node.exe"
+
+# Vérifier les processus sur le port 3000
+netstat -ano | grep :3000
+
+# Arrêter un processus spécifique par PID
+cmd.exe //c "taskkill /F /PID <PID_NUMBER>"
+
+# Vérifier que les processus sont arrêtés
+ps aux | grep bun
+```
+
+#### **Si Ctrl+C ne fonctionne toujours pas (PowerShell)**
+
 ```powershell
 # Arrêt forcé de tous les processus
 taskkill /F /IM bun.exe
@@ -374,13 +394,13 @@ pm2 logs
 
 ### **Problèmes Courants**
 
-#### **1. Port déjà utilisé**
+#### **1. Port déjà utilisé (Git Bash)**
 ```bash
 # Vérifier le port
-netstat -ano | findstr :3000
+netstat -ano | grep :3000
 
-# Arrêter le processus
-taskkill /F /PID <PID>
+# Arrêter le processus (Git Bash)
+cmd.exe //c "taskkill /F /PID <PID>"
 
 # Ou changer le port dans .env
 PORT=3001
@@ -400,14 +420,16 @@ bun run build
 pm2 start ecosystem.config.js
 ```
 
-#### **3. Ctrl+C ne fonctionne toujours pas**
+#### **3. Ctrl+C ne fonctionne toujours pas (Git Bash)**
 ```bash
 # Vérifier la configuration PM2
 pm2 show eliza-test-agent
 
-# Forcer l'arrêt
+# Forcer l'arrêt avec cmd.exe (COMMANDE CORRECTE)
+cmd.exe //c "taskkill /F /IM bun.exe"
+
+# Ou arrêter PM2
 pm2 kill
-taskkill /F /IM bun.exe
 ```
 
 ### **Scripts de Diagnostic**

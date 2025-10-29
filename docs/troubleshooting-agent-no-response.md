@@ -249,8 +249,8 @@ Sans warning sur TEXT_EMBEDDING.
 ## 🚀 Procédure complète de redémarrage
 
 ```bash
-# 1. Arrêter tous les processus
-taskkill //F //IM bun.exe
+# 1. Arrêter tous les processus (Git Bash)
+cmd.exe //c "taskkill /F /IM bun.exe"
 pm2 kill
 
 # 2. Nettoyer et réinstaller

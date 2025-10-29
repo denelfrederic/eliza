@@ -220,6 +220,37 @@ export NODE_ENV="development"
 env | grep OPENAI
 ```
 
+#### **5. Ctrl+C ne fonctionne pas pour arrêter l'agent**
+
+**Symptôme :** Appuyer sur Ctrl+C ne ferme pas le processus Bun.
+
+**Solution :** Utiliser la commande Windows via `cmd.exe` :
+
+```bash
+# Arrêter tous les processus Bun (COMMANDE CORRECTE)
+cmd.exe //c "taskkill /F /IM bun.exe"
+
+# Vérifier que les processus sont arrêtés
+ps aux | grep bun
+```
+
+**Note importante :** 
+- ❌ Ne pas utiliser `taskkill //F //IM bun.exe` directement (ne fonctionne pas dans Git Bash)
+- ✅ Utiliser `cmd.exe //c "taskkill /F /IM bun.exe"` (syntaxe correcte)
+
+#### **6. Arrêt d'un processus spécifique par PID**
+
+```bash
+# Trouver le PID du processus
+ps aux | grep bun
+
+# Arrêter avec cmd.exe (méthode recommandée)
+cmd.exe //c "taskkill /F /PID <PID_NUMBER>"
+
+# Ou utiliser kill si disponible
+kill -9 <PID_NUMBER>
+```
+
 ### **Scripts de Diagnostic**
 
 #### **Script de Vérification**
@@ -299,6 +330,25 @@ source .env.local
 - [Guide Déploiement](docs/deploiement.md)
 
 ### **Commandes Git Bash Utiles**
+
+#### **Arrêt des Processus**
+```bash
+# Arrêt normal (devrait fonctionner)
+Ctrl+C
+
+# Si Ctrl+C ne fonctionne pas (COMMANDE CORRECTE)
+cmd.exe //c "taskkill /F /IM bun.exe"
+
+# Arrêter tous les processus Bun et Node
+cmd.exe //c "taskkill /F /IM bun.exe"
+cmd.exe //c "taskkill /F /IM node.exe"
+
+# Trouver et arrêter un processus spécifique
+ps aux | grep bun
+cmd.exe //c "taskkill /F /PID <PID_NUMBER>"
+```
+
+#### **Autres Commandes Utiles**
 ```bash
 # Historique des commandes
 history

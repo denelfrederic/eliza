@@ -1,0 +1,36 @@
+# Base de données SQLite
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Fichiers d'environnement
+.env
+.env.local
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ElizaOS
+.eliza/
+eliza.db
+eliza.db-shm
+eliza.db-wal

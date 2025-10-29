@@ -223,8 +223,8 @@ bunx elizaos dev
 # Arrêter l'agent
 Ctrl+C  # ← Simple et efficace !
 
-# En dernier recours si Ctrl+C ne fonctionne pas
-taskkill //F //IM bun.exe
+# En dernier recours si Ctrl+C ne fonctionne pas (Git Bash)
+cmd.exe //c "taskkill /F /IM bun.exe"
 
 # Nettoyer et réinstaller
 rm -rf node_modules bun.lock
