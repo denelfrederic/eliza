@@ -238,6 +238,17 @@ const surveillancePortefeuilleAction: Action = {
 
           portfolioText += `💡 **Note :** Pour voir uniquement une chaîne, configurez \`EVM_CHAINS=ethereum\` dans votre .env\n`;
 
+          // Ajouter les statistiques d'utilisation API
+          try {
+            const { openaiTracker } = await import('./services/openai-tracker.service');
+            const compactSummary = openaiTracker.generateCompactSummary();
+            if (compactSummary) {
+              portfolioText += compactSummary;
+            }
+          } catch (err) {
+            logger.warn('Could not fetch API stats:', err);
+          }
+
           const responseContent: Content = {
             text: portfolioText,
             actions: ['SURVEILLANCE_PORTEFEUILLE'],
@@ -665,6 +676,17 @@ const surveillancePortefeuilleAction: Action = {
       } else {
         portfolioText += `\n✅ Clé API Etherscan V2 configurée\n`;
       }
+
+      // Ajouter les statistiques d'utilisation API
+      try {
+        const { openaiTracker } = await import('./services/openai-tracker.service');
+        const compactSummary = openaiTracker.generateCompactSummary();
+        if (compactSummary) {
+          portfolioText += compactSummary;
+        }
+      } catch (err) {
+        logger.warn('Could not fetch API stats:', err);
+      }
       
       const responseContent: Content = {
         text: portfolioText,
@@ -818,8 +840,7 @@ const proposerRebalancingAction: Action = {
 
       const threshold = 10; // Seuil de 10% de déviation
 
-      const responseContent: Content = {
-        text: `Analyse du portefeuille pour détecter les besoins de rebalancing...\n\n` +
+      let responseText = `Analyse du portefeuille pour détecter les besoins de rebalancing...\n\n` +
           `Seuil de détection: ${threshold}% de déviation\n` +
           `Mode: PROPOSITION UNIQUEMENT (aucune transaction ne sera exécutée)\n\n` +
           `Je vais comparer l'allocation actuelle avec les cibles définies et proposer des ajustements spécifiques si nécessaire. ` +
@@ -827,7 +848,21 @@ const proposerRebalancingAction: Action = {
           `- Les actifs à ajuster\n` +
           `- Les quantités recommandées (vendues/achetées)\n` +
           `- La justification de chaque ajustement\n\n` +
-          `RAPPEL IMPORTANT: Ces propositions sont informatives uniquement. Vous devez exécuter manuellement toute transaction.`,
+          `RAPPEL IMPORTANT: Ces propositions sont informatives uniquement. Vous devez exécuter manuellement toute transaction.`;
+
+      // Ajouter les statistiques d'utilisation API
+      try {
+        const { openaiTracker } = await import('./services/openai-tracker.service');
+        const compactSummary = openaiTracker.generateCompactSummary();
+        if (compactSummary) {
+          responseText += compactSummary;
+        }
+      } catch (err) {
+        logger.warn('Could not fetch API stats:', err);
+      }
+
+      const responseContent: Content = {
+        text: responseText,
         actions: ['PROPOSER_REBALANCING'],
         source: message.content.source,
       };
@@ -898,6 +933,141 @@ const proposerRebalancingAction: Action = {
         content: {
           text: 'Génération de propositions de rebalancing...',
           actions: ['PROPOSER_REBALANCING'],
+        },
+      },
+    ],
+  ],
+};
+
+/**
+ * Action pour afficher les statistiques d'utilisation de l'API OpenAI
+ * Permet de surveiller la consommation de tokens et les coûts
+ */
+const showApiStatsAction: Action = {
+  name: 'SHOW_API_STATS',
+  similes: ['API_STATS', 'SHOW_STATS', 'API_USAGE', 'TOKEN_USAGE', 'CONSUMPTION'],
+  description:
+    'Affiche les statistiques d\'utilisation de l\'API OpenAI : nombre d\'appels, tokens consommés, et coûts estimés pour la session en cours.',
+
+  validate: async (
+    _runtime: IAgentRuntime,
+    _message: Memory,
+    _state: State
+  ): Promise<boolean> => {
+    return true; // Toujours disponible
+  },
+
+  handler: async (
+    runtime: IAgentRuntime,
+    message: Memory,
+    _state: State,
+    _options: any,
+    callback: HandlerCallback,
+    _responses: Memory[]
+  ): Promise<ActionResult> => {
+    try {
+      logger.info('Handling SHOW_API_STATS action');
+
+      // Importer dynamiquement le service de tracking
+      const { openaiTracker } = await import('./services/openai-tracker.service');
+
+      // Générer le rapport complet
+      const report = openaiTracker.generateReport();
+
+      // Vérifier les seuils d'alerte
+      const threshold = openaiTracker.checkThresholds();
+      let fullReport = report;
+      
+      if (threshold?.alert) {
+        fullReport = threshold.message + '\n\n' + report;
+      }
+
+      // Ajouter des recommandations d'optimisation
+      const { openaiInterceptor } = await import('./services/openai-interceptor.service');
+      const recommendations = openaiInterceptor.generateOptimizationRecommendations();
+      
+      if (recommendations.length > 0) {
+        fullReport += '\n**💡 Recommandations d\'optimisation**\n';
+        recommendations.forEach(rec => {
+          fullReport += `\n${rec}`;
+        });
+      }
+
+      const responseContent: Content = {
+        text: fullReport,
+        actions: ['SHOW_API_STATS'],
+        source: message.content.source,
+      };
+
+      await callback(responseContent);
+
+      return {
+        text: 'Statistiques API affichées',
+        values: {
+          success: true,
+          stats: openaiTracker.getAllStats(),
+        },
+        data: {
+          actionName: 'SHOW_API_STATS',
+          messageId: message.id,
+          timestamp: Date.now(),
+        },
+        success: true,
+      };
+    } catch (error) {
+      logger.error({ error }, 'Error in SHOW_API_STATS action:');
+
+      const errorContent: Content = {
+        text: `Erreur lors de la récupération des statistiques : ${error instanceof Error ? error.message : String(error)}`,
+        actions: ['SHOW_API_STATS'],
+      };
+
+      await callback(errorContent);
+
+      return {
+        text: errorContent.text,
+        values: {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        data: {
+          actionName: 'SHOW_API_STATS',
+          error: error instanceof Error ? error.message : String(error),
+        },
+        success: false,
+        error: error instanceof Error ? error : new Error(String(error)),
+      };
+    }
+  },
+
+  examples: [
+    [
+      {
+        name: '{{name1}}',
+        content: {
+          text: 'Montre-moi les stats API',
+        },
+      },
+      {
+        name: '{{name2}}',
+        content: {
+          text: 'Récupération des statistiques en cours...',
+          actions: ['SHOW_API_STATS'],
+        },
+      },
+    ],
+    [
+      {
+        name: '{{name1}}',
+        content: {
+          text: 'Combien de tokens j\'ai consommé ?',
+        },
+      },
+      {
+        name: '{{name2}}',
+        content: {
+          text: 'Affichage de la consommation...',
+          actions: ['SHOW_API_STATS'],
         },
       },
     ],
@@ -1030,6 +1200,57 @@ const plugin: Plugin = {
         });
       },
     },
+    {
+      name: 'api-stats',
+      path: '/api/stats',
+      type: 'GET',
+      handler: async (_req: any, res: any) => {
+        try {
+          const { openaiTracker } = await import('./services/openai-tracker.service');
+          const { openaiInterceptor } = await import('./services/openai-interceptor.service');
+
+          const stats = openaiTracker.getAllStats();
+          const threshold = openaiTracker.checkThresholds();
+          const recommendations = openaiInterceptor.generateOptimizationRecommendations();
+
+          res.json({
+            success: true,
+            timestamp: Date.now(),
+            stats,
+            threshold,
+            recommendations,
+            report: openaiTracker.generateReport(),
+          });
+        } catch (error) {
+          res.status(500).json({
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      },
+    },
+    {
+      name: 'api-stats-reset',
+      path: '/api/stats/reset',
+      type: 'POST',
+      handler: async (_req: any, res: any) => {
+        try {
+          const { openaiTracker } = await import('./services/openai-tracker.service');
+          openaiTracker.resetStats();
+          
+          res.json({
+            success: true,
+            message: 'Statistiques réinitialisées avec succès',
+            timestamp: Date.now(),
+          });
+        } catch (error) {
+          res.status(500).json({
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      },
+    },
   ],
   events: {
     MESSAGE_RECEIVED: [
@@ -1057,8 +1278,17 @@ const plugin: Plugin = {
       },
     ],
   },
-  services: [StarterService],
-  actions: [surveillancePortefeuilleAction, proposerRebalancingAction],
+  services: [StarterService, 
+    async (runtime: IAgentRuntime) => {
+      const { OpenAITrackerService } = await import('./services/openai-tracker.service');
+      return new OpenAITrackerService();
+    },
+    async (runtime: IAgentRuntime) => {
+      const { OpenAIInterceptorService } = await import('./services/openai-interceptor.service');
+      return new OpenAIInterceptorService();
+    }
+  ],
+  actions: [surveillancePortefeuilleAction, proposerRebalancingAction, showApiStatsAction],
   providers: [helloWorldProvider],
 };
 
