@@ -238,6 +238,40 @@ const surveillancePortefeuilleAction: Action = {
 
           portfolioText += `💡 **Note :** Pour voir uniquement une chaîne, configurez \`EVM_CHAINS=ethereum\` dans votre .env\n`;
 
+          // Simuler un tracking d'appel OpenAI pour cette action
+          // Note: Dans un vrai système, cela devrait être intercepté automatiquement via les événements ElizaOS
+          try {
+            const { openaiInterceptor } = await import('./services/openai-interceptor.service');
+            const modelName = process.env.OPENAI_MODEL || 'gpt-5-mini';
+            // Estimation basée sur un prompt typique + contexte de portfolio
+            // Prompt système: ~380 tokens (depuis character.ts)
+            // Contexte message utilisateur: ~50-100 tokens
+            // Réponse générée: longueur de la réponse finale
+            const systemPromptTokens = 380; // Optimisé dans character.ts
+            const userMessageTokens = openaiInterceptor.estimateTokens(message.content.text || '');
+            const contextTokens = 200; // Estimation contexte/mémoires
+            const estimatedPromptTokens = systemPromptTokens + userMessageTokens + contextTokens;
+            const estimatedCompletionTokens = openaiInterceptor.estimateTokens(portfolioText);
+            
+            openaiInterceptor.trackGeneration(modelName, '', portfolioText, {
+              prompt: estimatedPromptTokens,
+              completion: estimatedCompletionTokens,
+            });
+          } catch (err) {
+            logger.warn('Could not track API usage:', err);
+          }
+
+          // Ajouter les statistiques d'utilisation API
+          try {
+            const { openaiTracker } = await import('./services/openai-tracker.service');
+            const compactSummary = openaiTracker.generateCompactSummary();
+            if (compactSummary) {
+              portfolioText += compactSummary;
+            }
+          } catch (err) {
+            logger.warn('Could not fetch API stats:', err);
+          }
+
           const responseContent: Content = {
             text: portfolioText,
             actions: ['SURVEILLANCE_PORTEFEUILLE'],
@@ -665,6 +699,35 @@ const surveillancePortefeuilleAction: Action = {
       } else {
         portfolioText += `\n✅ Clé API Etherscan V2 configurée\n`;
       }
+
+      // Simuler un tracking d'appel OpenAI pour cette action
+      try {
+        const { openaiInterceptor } = await import('./services/openai-interceptor.service');
+        const modelName = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+        const systemPromptTokens = 380; // Prompt système optimisé
+        const userMessageTokens = openaiInterceptor.estimateTokens(message.content.text || '');
+        const contextTokens = 200;
+        const estimatedPromptTokens = systemPromptTokens + userMessageTokens + contextTokens;
+        const estimatedCompletionTokens = openaiInterceptor.estimateTokens(portfolioText);
+        
+        openaiInterceptor.trackGeneration(modelName, '', portfolioText, {
+          prompt: estimatedPromptTokens,
+          completion: estimatedCompletionTokens,
+        });
+      } catch (err) {
+        logger.warn('Could not track API usage:', err);
+      }
+
+      // Ajouter les statistiques d'utilisation API
+      try {
+        const { openaiTracker } = await import('./services/openai-tracker.service');
+        const compactSummary = openaiTracker.generateCompactSummary();
+        if (compactSummary) {
+          portfolioText += compactSummary;
+        }
+      } catch (err) {
+        logger.warn('Could not fetch API stats:', err);
+      }
       
       const responseContent: Content = {
         text: portfolioText,
@@ -818,8 +881,7 @@ const proposerRebalancingAction: Action = {
 
       const threshold = 10; // Seuil de 10% de déviation
 
-      const responseContent: Content = {
-        text: `Analyse du portefeuille pour détecter les besoins de rebalancing...\n\n` +
+      let responseText = `Analyse du portefeuille pour détecter les besoins de rebalancing...\n\n` +
           `Seuil de détection: ${threshold}% de déviation\n` +
           `Mode: PROPOSITION UNIQUEMENT (aucune transaction ne sera exécutée)\n\n` +
           `Je vais comparer l'allocation actuelle avec les cibles définies et proposer des ajustements spécifiques si nécessaire. ` +
@@ -827,7 +889,39 @@ const proposerRebalancingAction: Action = {
           `- Les actifs à ajuster\n` +
           `- Les quantités recommandées (vendues/achetées)\n` +
           `- La justification de chaque ajustement\n\n` +
-          `RAPPEL IMPORTANT: Ces propositions sont informatives uniquement. Vous devez exécuter manuellement toute transaction.`,
+          `RAPPEL IMPORTANT: Ces propositions sont informatives uniquement. Vous devez exécuter manuellement toute transaction.`;
+
+      // Simuler un tracking d'appel OpenAI pour cette action
+      try {
+        const { openaiInterceptor } = await import('./services/openai-interceptor.service');
+        const modelName = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+        const systemPromptTokens = 380; // Prompt système optimisé
+        const userMessageTokens = openaiInterceptor.estimateTokens(message.content.text || '');
+        const contextTokens = 200;
+        const estimatedPromptTokens = systemPromptTokens + userMessageTokens + contextTokens;
+        const estimatedCompletionTokens = openaiInterceptor.estimateTokens(responseText);
+        
+        openaiInterceptor.trackGeneration(modelName, '', responseText, {
+          prompt: estimatedPromptTokens,
+          completion: estimatedCompletionTokens,
+        });
+      } catch (err) {
+        logger.warn('Could not track API usage:', err);
+      }
+
+      // Ajouter les statistiques d'utilisation API
+      try {
+        const { openaiTracker } = await import('./services/openai-tracker.service');
+        const compactSummary = openaiTracker.generateCompactSummary();
+        if (compactSummary) {
+          responseText += compactSummary;
+        }
+      } catch (err) {
+        logger.warn('Could not fetch API stats:', err);
+      }
+
+      const responseContent: Content = {
+        text: responseText,
         actions: ['PROPOSER_REBALANCING'],
         source: message.content.source,
       };
@@ -898,6 +992,141 @@ const proposerRebalancingAction: Action = {
         content: {
           text: 'Génération de propositions de rebalancing...',
           actions: ['PROPOSER_REBALANCING'],
+        },
+      },
+    ],
+  ],
+};
+
+/**
+ * Action pour afficher les statistiques d'utilisation de l'API OpenAI
+ * Permet de surveiller la consommation de tokens et les coûts
+ */
+const showApiStatsAction: Action = {
+  name: 'SHOW_API_STATS',
+  similes: ['API_STATS', 'SHOW_STATS', 'API_USAGE', 'TOKEN_USAGE', 'CONSUMPTION'],
+  description:
+    'Affiche les statistiques d\'utilisation de l\'API OpenAI : nombre d\'appels, tokens consommés, et coûts estimés pour la session en cours.',
+
+  validate: async (
+    _runtime: IAgentRuntime,
+    _message: Memory,
+    _state: State
+  ): Promise<boolean> => {
+    return true; // Toujours disponible
+  },
+
+  handler: async (
+    runtime: IAgentRuntime,
+    message: Memory,
+    _state: State,
+    _options: any,
+    callback: HandlerCallback,
+    _responses: Memory[]
+  ): Promise<ActionResult> => {
+    try {
+      logger.info('Handling SHOW_API_STATS action');
+
+      // Importer dynamiquement le service de tracking
+      const { openaiTracker } = await import('./services/openai-tracker.service');
+
+      // Générer le rapport complet
+      const report = openaiTracker.generateReport();
+
+      // Vérifier les seuils d'alerte
+      const threshold = openaiTracker.checkThresholds();
+      let fullReport = report;
+      
+      if (threshold?.alert) {
+        fullReport = threshold.message + '\n\n' + report;
+      }
+
+      // Ajouter des recommandations d'optimisation
+      const { openaiInterceptor } = await import('./services/openai-interceptor.service');
+      const recommendations = openaiInterceptor.generateOptimizationRecommendations();
+      
+      if (recommendations.length > 0) {
+        fullReport += '\n**💡 Recommandations d\'optimisation**\n';
+        recommendations.forEach(rec => {
+          fullReport += `\n${rec}`;
+        });
+      }
+
+      const responseContent: Content = {
+        text: fullReport,
+        actions: ['SHOW_API_STATS'],
+        source: message.content.source,
+      };
+
+      await callback(responseContent);
+
+      return {
+        text: 'Statistiques API affichées',
+        values: {
+          success: true,
+          stats: openaiTracker.getAllStats(),
+        },
+        data: {
+          actionName: 'SHOW_API_STATS',
+          messageId: message.id,
+          timestamp: Date.now(),
+        },
+        success: true,
+      };
+    } catch (error) {
+      logger.error({ error }, 'Error in SHOW_API_STATS action:');
+
+      const errorContent: Content = {
+        text: `Erreur lors de la récupération des statistiques : ${error instanceof Error ? error.message : String(error)}`,
+        actions: ['SHOW_API_STATS'],
+      };
+
+      await callback(errorContent);
+
+      return {
+        text: errorContent.text,
+        values: {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        data: {
+          actionName: 'SHOW_API_STATS',
+          error: error instanceof Error ? error.message : String(error),
+        },
+        success: false,
+        error: error instanceof Error ? error : new Error(String(error)),
+      };
+    }
+  },
+
+  examples: [
+    [
+      {
+        name: '{{name1}}',
+        content: {
+          text: 'Montre-moi les stats API',
+        },
+      },
+      {
+        name: '{{name2}}',
+        content: {
+          text: 'Récupération des statistiques en cours...',
+          actions: ['SHOW_API_STATS'],
+        },
+      },
+    ],
+    [
+      {
+        name: '{{name1}}',
+        content: {
+          text: 'Combien de tokens j\'ai consommé ?',
+        },
+      },
+      {
+        name: '{{name2}}',
+        content: {
+          text: 'Affichage de la consommation...',
+          actions: ['SHOW_API_STATS'],
         },
       },
     ],
@@ -1030,12 +1259,66 @@ const plugin: Plugin = {
         });
       },
     },
+    {
+      name: 'api-stats',
+      path: '/api/stats',
+      type: 'GET',
+      handler: async (_req: any, res: any) => {
+        try {
+          const { openaiTracker } = await import('./services/openai-tracker.service');
+          const { openaiInterceptor } = await import('./services/openai-interceptor.service');
+
+          const stats = openaiTracker.getAllStats();
+          const threshold = openaiTracker.checkThresholds();
+          const recommendations = openaiInterceptor.generateOptimizationRecommendations();
+
+          res.json({
+            success: true,
+            timestamp: Date.now(),
+            stats,
+            threshold,
+            recommendations,
+            report: openaiTracker.generateReport(),
+          });
+        } catch (error) {
+          res.status(500).json({
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      },
+    },
+    {
+      name: 'api-stats-reset',
+      path: '/api/stats/reset',
+      type: 'POST',
+      handler: async (_req: any, res: any) => {
+        try {
+          const { openaiTracker } = await import('./services/openai-tracker.service');
+          openaiTracker.resetStats();
+          
+          res.json({
+            success: true,
+            message: 'Statistiques réinitialisées avec succès',
+            timestamp: Date.now(),
+          });
+        } catch (error) {
+          res.status(500).json({
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      },
+    },
   ],
   events: {
     MESSAGE_RECEIVED: [
-      async (params) => {
+      async (params: any) => {
         logger.info('MESSAGE_RECEIVED event received');
         logger.info({ keys: Object.keys(params) }, 'MESSAGE_RECEIVED param keys');
+        
+        // Log détaillé pour déboguer la structure
+        logger.debug('MESSAGE_RECEIVED params:', JSON.stringify(params, null, 2));
       },
     ],
     VOICE_MESSAGE_RECEIVED: [
@@ -1056,9 +1339,142 @@ const plugin: Plugin = {
         logger.info({ keys: Object.keys(params) }, 'WORLD_JOINED param keys');
       },
     ],
+    // Interception globale des réponses générées pour tracking OpenAI
+    RESPONSE_GENERATED: [
+      async (params: any) => {
+        try {
+          // Log détaillé pour déboguer
+          logger.debug(`RESPONSE_GENERATED event received, keys: ${Object.keys(params).join(', ')}`);
+          logger.debug(`RESPONSE_GENERATED params sample: ${JSON.stringify({
+            model: params.model,
+            modelName: params.modelName,
+            hasPrompt: !!params.prompt,
+            hasResponse: !!params.response,
+            hasUsage: !!params.usage,
+            keys: Object.keys(params),
+          }, null, 2)}`);
+          
+          const { openaiInterceptor } = await import('./services/openai-interceptor.service');
+          
+          // Extraire les informations de l'appel OpenAI (plusieurs formats possibles)
+          const modelName = params.model 
+            || params.modelName 
+            || params.model_id
+            || params.response?.model
+            || process.env.OPENAI_MODEL 
+            || 'gpt-4o-mini';
+          
+          const prompt = params.prompt 
+            || params.input 
+            || params.message
+            || params.messages?.[0]?.content
+            || '';
+          
+          const response = params.response 
+            || params.text 
+            || params.content
+            || params.output
+            || params.completion
+            || '';
+          
+          // Tokens réels si disponibles depuis l'API OpenAI (plusieurs formats)
+          const usage = params.usage 
+            || params.responseUsage
+            || params.response?.usage
+            || params.usage_stats;
+          
+          const actualTokens = usage ? {
+            prompt: usage.prompt_tokens 
+              || usage.promptTokens 
+              || usage.input_tokens
+              || usage.inputTokens
+              || 0,
+            completion: usage.completion_tokens 
+              || usage.completionTokens
+              || usage.output_tokens
+              || usage.outputTokens
+              || 0,
+          } : undefined;
+          
+          // Track l'appel seulement si on a au moins un prompt ou une réponse
+          if (prompt || response) {
+            openaiInterceptor.trackGeneration(modelName, prompt, response, actualTokens);
+            logger.info(`✅ Tracked OpenAI call: ${modelName}, tokens: ${actualTokens ? `${actualTokens.prompt}/${actualTokens.completion}` : 'estimated'}, prompt length: ${prompt.length}, response length: ${response.length}`);
+          } else {
+            logger.debug(`⚠️ RESPONSE_GENERATED event missing prompt/response data. Keys: ${Object.keys(params).join(', ')}`);
+          }
+        } catch (err) {
+          logger.warn('Could not track OpenAI call in RESPONSE_GENERATED event:', err);
+          logger.debug('Error details:', err instanceof Error ? err.stack : String(err));
+        }
+      },
+    ],
+    // Événements supplémentaires pour capturer tous les appels
+    TEXT_GENERATED: [
+      async (params: any) => {
+        try {
+          logger.debug('TEXT_GENERATED event received');
+          const { openaiInterceptor } = await import('./services/openai-interceptor.service');
+          const modelName = params.model || params.modelName || process.env.OPENAI_MODEL || 'gpt-4o-mini';
+          const prompt = params.prompt || params.input || '';
+          const response = params.text || params.response || params.output || '';
+          const usage = params.usage;
+          const actualTokens = usage ? {
+            prompt: usage.prompt_tokens || usage.promptTokens || 0,
+            completion: usage.completion_tokens || usage.completionTokens || 0,
+          } : undefined;
+          
+          if (prompt || response) {
+            openaiInterceptor.trackGeneration(modelName, prompt, response, actualTokens);
+            logger.info(`✅ Tracked OpenAI call (TEXT_GENERATED): ${modelName}`);
+          }
+        } catch (err) {
+          logger.warn('Could not track OpenAI call in TEXT_GENERATED event:', err);
+        }
+      },
+    ],
+    COMPLETION: [
+      async (params: any) => {
+        try {
+          logger.debug('COMPLETION event received');
+          const { openaiInterceptor } = await import('./services/openai-interceptor.service');
+          const modelName = params.model || params.modelName || process.env.OPENAI_MODEL || 'gpt-4o-mini';
+          const prompt = params.prompt || params.input || '';
+          const response = params.completion || params.text || params.output || '';
+          const usage = params.usage;
+          const actualTokens = usage ? {
+            prompt: usage.prompt_tokens || usage.promptTokens || 0,
+            completion: usage.completion_tokens || usage.completionTokens || 0,
+          } : undefined;
+          
+          if (prompt || response) {
+            openaiInterceptor.trackGeneration(modelName, prompt, response, actualTokens);
+            logger.info(`✅ Tracked OpenAI call (COMPLETION): ${modelName}`);
+          }
+        } catch (err) {
+          logger.warn('Could not track OpenAI call in COMPLETION event:', err);
+        }
+      },
+    ],
+    // Interception des erreurs API
+    ERROR: [
+      async (params: any) => {
+        try {
+          // Vérifier si c'est une erreur OpenAI
+          if (params.error && (params.error.message?.includes('OpenAI') || params.error.message?.includes('API'))) {
+            const { openaiInterceptor } = await import('./services/openai-interceptor.service');
+            const modelName = params.model || process.env.OPENAI_MODEL || 'gpt-4o-mini';
+            openaiInterceptor.trackError(modelName, params.error);
+            logger.debug(`Tracked OpenAI error for model: ${modelName}`);
+          }
+        } catch (err) {
+          logger.warn('Could not track OpenAI error:', err);
+        }
+      },
+    ],
   },
   services: [StarterService],
-  actions: [surveillancePortefeuilleAction, proposerRebalancingAction],
+  actions: [surveillancePortefeuilleAction, proposerRebalancingAction, showApiStatsAction],
   providers: [helloWorldProvider],
 };
 

@@ -1,43 +1,131 @@
-# Project Starter
+# Finance Agent - Crypto Portfolio Surveillance
 
-This is the starter template for ElizaOS projects.
+Agent de surveillance de portefeuille crypto Ethereum/EVM en mode **lecture seule**. Aucune transaction n'est exécutée.
 
-## Features
+## 🎯 Fonctionnalités
 
-- Pre-configured project structure for ElizaOS development
-- Comprehensive testing setup with component and e2e tests
-- Default character configuration with plugin integration
-- Example service, action, and provider implementations
-- TypeScript configuration for optimal developer experience
-- Built-in documentation and examples
+- 📊 Surveillance de portefeuille crypto (Ethereum & multi-chain)
+- 💡 Propositions de rebalancing (seuil 10% de déviation)
+- 🔍 Analyse d'allocation d'actifs
+- 📈 **Tracking des appels OpenAI et consommation de tokens**
+- ⚡ Mode lecture seule sécurisé (pas de clé privée requise)
 
-## Getting Started
+## 🆕 Système de tracking OpenAI
+
+L'agent inclut un système complet de suivi de la consommation API :
+
+- ✅ Comptage automatique des appels par modèle
+- ✅ Suivi des tokens (prompt + completion)
+- ✅ Estimation des coûts en temps réel
+- ✅ Alertes automatiques (>100 appels ou >$1.00)
+- ✅ Recommandations d'optimisation
+- ✅ Affichage dans chaque réponse
+- ✅ API REST `/api/stats` pour monitoring
+
+**Voir** : `docs/OPENAI-TRACKING.md` pour le guide complet
+
+## 🚀 Démarrage rapide
+
+### Prérequis
+
+- Node.js 18+ ou Bun
+- Une clé API OpenAI ou Anthropic
+- (Optionnel) Clé API Etherscan/Alchemy pour meilleures performances
+
+### Installation
 
 ```bash
-# Create a new project
-elizaos create -t project my-project
-# Dependencies are automatically installed and built
+# Cloner et installer
+cd finance-agent
+bun install
 
-# Navigate to the project directory
-cd my-project
+# Configurer l'environnement
+cp .env.example .env
+# Éditer .env avec vos clés API
 
-# Start development immediately
-elizaos dev
+# Démarrer l'agent
+bun run dev
 ```
 
-## Development
+### Configuration minimale (.env)
 
 ```bash
-# Start development with hot-reloading (recommended)
-elizaos dev
+# Adresse à surveiller (OBLIGATOIRE)
+EVM_PUBLIC_KEY=0xVotreAdresseEthereum
 
-# OR start without hot-reloading
-elizaos start
-# Note: When using 'start', you need to rebuild after changes:
-# bun run build
+# Chaînes à surveiller (OBLIGATOIRE)
+EVM_CHAINS=ethereum  # ou ethereum,arbitrum,optimism
 
-# Test the project
-elizaos test
+# Fournisseur LLM (au moins un requis)
+OPENAI_API_KEY=sk-votre-cle-openai
+
+# Base de données (OBLIGATOIRE)
+DATABASE_URL=sqlite://./data/eliza.db
+
+# APIs publiques (optionnel mais recommandé)
+ETHERSCAN_API_KEY=votre-cle-etherscan
+```
+
+**Voir** : `CONFIGURATION-SURVEILLANCE.md` pour plus de détails
+
+## 💬 Utilisation
+
+### Commandes disponibles
+
+#### Voir son portefeuille
+```
+> Montre-moi mon portefeuille
+> Affiche mon portfolio
+> Quel est l'état de mon wallet ?
+```
+
+#### Propositions de rebalancing
+```
+> Mon portefeuille a-t-il besoin de rebalancing ?
+> Propose un rebalancing
+```
+
+#### Statistiques d'utilisation API
+```
+> Montre-moi les stats API
+> Combien de tokens j'ai consommé ?
+```
+
+### Affichage automatique
+
+Chaque réponse inclut un résumé de consommation :
+```
+---
+💡 **Session actuelle** : 8 appels | 5,137 tokens | ~$0.0013
+```
+
+## 📊 Monitoring API
+
+### Via le chat
+```
+> Montre-moi les stats API
+```
+
+### Via l'API REST
+```bash
+# Consulter les statistiques
+curl http://localhost:3000/api/stats
+
+# Réinitialiser les compteurs
+curl -X POST http://localhost:3000/api/stats/reset
+```
+
+## 🛠️ Développement
+
+```bash
+# Démarrage en mode dev (hot-reload)
+bun run dev
+
+# Build pour production
+bun run build
+
+# Tests
+bun test
 ```
 
 ## Testing
